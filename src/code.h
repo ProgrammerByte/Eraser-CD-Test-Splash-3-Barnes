@@ -106,7 +106,6 @@ unsigned long Global_partitionstart, Global_partitionend, Global_partitiontime;
 unsigned long Global_treebuildstart, Global_treebuildend, Global_treebuildtime;
 unsigned long Global_forcecalcstart, Global_forcecalcend, Global_forcecalctime;
 long Global_current_id;
-volatile long Global_k; /*for memory allocation in code.C */
 
 /* This structure is needed because under the sproc model there is no
  * per processor private address space.

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/times.h>
 #include <time.h>
+#include <unistd.h>
 
 #ifndef _STDINC_PRE_H_
 #define _STDINC_PRE_H_

@@ -181,8 +181,9 @@ nodeptr loadtree(bodyptr p, cellptr root, long ProcessId) {
   long i, j, root_level;
   bool valid_root;
   long kidIndex;
-  volatile nodeptr *volatile qptr, mynode;
+  nodeptr *qptr, mynode;
   leafptr le;
+  nodeptr parent;
 
   intcoord(xp, Pos(p));
   valid_root = TRUE;
@@ -232,45 +233,47 @@ nodeptr loadtree(bodyptr p, cellptr root, long ProcessId) {
     if (l == 0) {
       error("not enough levels in tree\n");
     }
+    /* lock the parent cell */
+    {
+      pthread_mutex_lock(
+          &((CellLock->CL)[(((cellptr)mynode)->seqnum % MAXLOCK)]));
+    };
     if (*qptr == NULL) {
-      /* lock the parent cell */
-      {
-        pthread_mutex_lock(
-            &((CellLock->CL)[(((cellptr)mynode)->seqnum % MAXLOCK)]));
-      };
-      if (*qptr == NULL) {
-        le = InitLeaf((cellptr)mynode, ProcessId);
-        Parent(p) = (nodeptr)le;
-        Level(p) = l;
-        ChildNum(p) = le->num_bodies;
-        ChildNum(le) = kidIndex;
-        Bodyp(le)[le->num_bodies++] = p;
-        *qptr = (nodeptr)le;
-        flag = FALSE;
-      }
-      {
-        pthread_mutex_unlock(
-            &((CellLock->CL)[(((cellptr)mynode)->seqnum % MAXLOCK)]));
-      };
-      /* unlock the parent cell */
+      le = InitLeaf((cellptr)mynode, ProcessId);
+      Parent(p) = (nodeptr)le;
+      Level(p) = l;
+      ChildNum(p) = le->num_bodies;
+      ChildNum(le) = kidIndex;
+      Bodyp(le)[le->num_bodies++] = p;
+      *qptr = (nodeptr)le;
+      flag = FALSE;
+      parent = Parent((leafptr)*qptr);
     }
-    if (flag && *qptr && (Type(*qptr) == LEAF)) {
+    {
+      pthread_mutex_unlock(
+          &((CellLock->CL)[(((cellptr)mynode)->seqnum % MAXLOCK)]));
+    };
+    /* unlock the parent cell */
+    if (flag) {
       /*   reached a "leaf"?      */
       {
         pthread_mutex_lock(
             &((CellLock->CL)[(((cellptr)mynode)->seqnum % MAXLOCK)]));
       };
       /* lock the parent cell */
-      if (Type(*qptr) == LEAF) { /* still a "leaf"?      */
+      if (*qptr && Type(*qptr) == LEAF) { /* still a "leaf"?      */
         le = (leafptr)*qptr;
         if (le->num_bodies == MAX_BODIES_PER_LEAF) {
-          *qptr = (nodeptr)SubdivideLeaf(le, (cellptr)mynode, l, ProcessId);
+          nodeptr n = (nodeptr)SubdivideLeaf(le, (cellptr)mynode, l, ProcessId);
+          atomic_thread_fence(memory_order_release);
+          *qptr = n;
         } else {
           Parent(p) = (nodeptr)le;
           Level(p) = l;
           ChildNum(p) = le->num_bodies;
           Bodyp(le)[le->num_bodies++] = p;
           flag = FALSE;
+          parent = Parent((leafptr)*qptr);
         }
       }
       {
@@ -287,7 +290,7 @@ nodeptr loadtree(bodyptr p, cellptr root, long ProcessId) {
     }
   }
   SETV(Local[ProcessId].Root_Coords, xp);
-  return Parent((leafptr)*qptr);
+  return parent;
 }
 
 /* * INTCOORD: compute integerized coordinates.  * Returns: TRUE
@@ -386,7 +389,10 @@ void hackcofm(long ProcessId) {
       ADDM(Quad(l), Quad(l), tmpm);
     }
 #endif
+    pthread_mutex_lock(&((CellLock->CL)[(((cellptr)l)->seqnum % MAXLOCK)]));
     Done(l) = TRUE;
+    pthread_cond_broadcast(&(Done_cv(l)));
+    pthread_mutex_unlock(&((CellLock->CL)[(((cellptr)l)->seqnum % MAXLOCK)]));
   }
   for (cc = Local[ProcessId].mycelltab + Local[ProcessId].myncell - 1;
        cc >= Local[ProcessId].mycelltab; cc--) {
@@ -397,14 +403,41 @@ void hackcofm(long ProcessId) {
     for (i = 0; i < NSUB; i++) {
       r = Subp(q)[i];
       if (r != NULL) {
+        {
+          ;
+          pthread_mutex_lock(
+              &((CellLock->CL)[(((cellptr)r)->seqnum % MAXLOCK)]));
+          ;
+        };
         while (!Done(r)) {
-          /* wait */
-        }
+          ;
+          pthread_cond_wait(&(Done_cv(r)),
+                            &(CellLock->CL[((cellptr)r)->seqnum % MAXLOCK]));
+          ;
+        };
+        {
+          ;
+          pthread_mutex_unlock(
+              &((CellLock->CL)[(((cellptr)r)->seqnum % MAXLOCK)]));
+          ;
+        };
         Mass(q) += Mass(r);
         Cost(q) += Cost(r);
         MULVS(tmpv, Pos(r), Mass(r));
         ADDV(Pos(q), Pos(q), tmpv);
+        {
+          ;
+          pthread_mutex_lock(
+              &((CellLock->CL)[(((cellptr)r)->seqnum % MAXLOCK)]));
+          ;
+        };
         Done(r) = FALSE;
+        {
+          ;
+          pthread_mutex_unlock(
+              &((CellLock->CL)[(((cellptr)r)->seqnum % MAXLOCK)]));
+          ;
+        };
       }
     }
     DIVVS(Pos(q), Pos(q), Mass(q));
@@ -426,7 +459,22 @@ void hackcofm(long ProcessId) {
       }
     }
 #endif
+    {
+      ;
+      pthread_mutex_lock(&((CellLock->CL)[(((cellptr)q)->seqnum % MAXLOCK)]));
+      ;
+    };
     Done(q) = TRUE;
+    {
+      ;
+      pthread_cond_broadcast(&(Done_cv(q)));
+      ;
+    };
+    {
+      ;
+      pthread_mutex_unlock(&((CellLock->CL)[(((cellptr)q)->seqnum % MAXLOCK)]));
+      ;
+    };
   }
 }
 

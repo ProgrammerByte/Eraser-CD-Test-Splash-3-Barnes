@@ -370,6 +370,7 @@ void init_root() {
   Global_G_root->seqnum = 0;
   Type(Global_G_root) = CELL;
   Done(Global_G_root) = FALSE;
+  pthread_cond_init(&(Global_Bartree_bar_cond), NULL);
   Level(Global_G_root) = IMAX >> 1;
   for (i = 0; i < NSUB; i++) {
     Subp(Global_G_root)[i] = NULL;
@@ -742,7 +743,11 @@ void stepsystem(long ProcessId) {
     MULVS(dvel, Acc(p), dthf);
     ADDV(vel1, Vel(p), dvel);
     MULVS(dpos, vel1, dtime);
+    pthread_mutex_lock(
+        &((CellLock->CL)[(((bodyptr)p)->parent->seqnum % MAXLOCK)]));
     ADDV(Pos(p), Pos(p), dpos);
+    pthread_mutex_unlock(
+        &((CellLock->CL)[(((bodyptr)p)->parent->seqnum % MAXLOCK)]));
     ADDV(Vel(p), vel1, dvel);
 
     for (i = 0; i < NDIM; i++) {
