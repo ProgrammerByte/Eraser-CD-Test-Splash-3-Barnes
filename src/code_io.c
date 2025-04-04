@@ -138,18 +138,7 @@ void output(long ProcessId) {
     { pthread_mutex_unlock(&(Global_CountLock)); };
   }
 
-  {
-    pthread_mutex_lock(&(Global_Baraccel_bar_mutex));
-    Global_Baraccel_bar_teller++;
-    if (Global_Baraccel_bar_teller == (NPROC)) {
-      Global_Baraccel_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Baraccel_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Baraccel_bar_cond),
-                        &(Global_Baraccel_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Baraccel_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Baraccel)); };
 
   if (ProcessId == 0) {
     nttot = Global_n2bcalc + Global_nbccalc;

@@ -75,24 +75,12 @@ vector Global_rmin;       /* lower-left corner of coordinate box     */
 vector Global_min;        /* temporary lower-left corner of the box  */
 vector Global_max;        /* temporary upper right corner of the box */
 real Global_rsize;        /* side-length of integer coordinate box   */
-pthread_mutex_t Global_Barstart_bar_mutex;
-pthread_cond_t Global_Barstart_bar_cond;
-unsigned Global_Barstart_bar_teller;
-pthread_mutex_t Global_Bartree_bar_mutex;
-pthread_cond_t Global_Bartree_bar_cond;
-unsigned Global_Bartree_bar_teller;
-pthread_mutex_t Global_Barcom_bar_mutex;
-pthread_cond_t Global_Barcom_bar_cond;
-unsigned Global_Barcom_bar_teller;
-pthread_mutex_t Global_Barload_bar_mutex;
-pthread_cond_t Global_Barload_bar_cond;
-unsigned Global_Barload_bar_teller;
-pthread_mutex_t Global_Baraccel_bar_mutex;
-pthread_cond_t Global_Baraccel_bar_cond;
-unsigned Global_Baraccel_bar_teller;
-pthread_mutex_t Global_Barpos_bar_mutex;
-pthread_cond_t Global_Barpos_bar_cond;
-unsigned Global_Barpos_bar_teller;
+pthread_barrier_t Global_Barstart;
+pthread_barrier_t Global_Bartree;
+pthread_barrier_t Global_Barcom;
+pthread_barrier_t Global_Barload;
+pthread_barrier_t Global_Baraccel;
+pthread_barrier_t Global_Barpos;
 pthread_mutex_t Global_CountLock; /* Lock on the shared variables            */
 pthread_mutex_t
     Global_NcellLock; /* Lock on the counter of array of cells for loadtree */

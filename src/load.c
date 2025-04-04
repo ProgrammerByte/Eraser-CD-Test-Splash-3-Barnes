@@ -58,30 +58,9 @@ void maketree(long ProcessId) {
       { pthread_mutex_unlock(&(Global_io_lock)); };
     }
   }
-  {
-    pthread_mutex_lock(&(Global_Bartree_bar_mutex));
-    Global_Bartree_bar_teller++;
-    if (Global_Bartree_bar_teller == (NPROC)) {
-      Global_Bartree_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Bartree_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Bartree_bar_cond),
-                        &(Global_Bartree_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Bartree_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Bartree)); };
   hackcofm(ProcessId);
-  {
-    pthread_mutex_lock(&(Global_Barcom_bar_mutex));
-    Global_Barcom_bar_teller++;
-    if (Global_Barcom_bar_teller == (NPROC)) {
-      Global_Barcom_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Barcom_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Barcom_bar_cond), &(Global_Barcom_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Barcom_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Barcom)); };
 }
 
 cellptr InitCell(cellptr parent, long ProcessId) {

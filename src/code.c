@@ -325,36 +325,12 @@ void ANLinit() {
   { __tid__[__threads__++] = pthread_self(); };
   /* Allocate global, shared memory */
 
-  {
-    pthread_mutex_init(&(Global_Barload_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Barload_bar_cond), NULL);
-    Global_Barload_bar_teller = 0;
-  };
-  {
-    pthread_mutex_init(&(Global_Bartree_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Bartree_bar_cond), NULL);
-    Global_Bartree_bar_teller = 0;
-  };
-  {
-    pthread_mutex_init(&(Global_Barcom_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Barcom_bar_cond), NULL);
-    Global_Barcom_bar_teller = 0;
-  };
-  {
-    pthread_mutex_init(&(Global_Baraccel_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Baraccel_bar_cond), NULL);
-    Global_Baraccel_bar_teller = 0;
-  };
-  {
-    pthread_mutex_init(&(Global_Barstart_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Barstart_bar_cond), NULL);
-    Global_Barstart_bar_teller = 0;
-  };
-  {
-    pthread_mutex_init(&(Global_Barpos_bar_mutex), NULL);
-    pthread_cond_init(&(Global_Barpos_bar_cond), NULL);
-    Global_Barpos_bar_teller = 0;
-  };
+  pthread_barrier_init(Global_Barload, NPROC);
+  pthread_barrier_init(Global_Bartree, NPROC);
+  pthread_barrier_init(Global_Barcom, NPROC);
+  pthread_barrier_init(Global_Baraccel, NPROC);
+  pthread_barrier_init(Global_Barstart, NPROC);
+  pthread_barrier_init(Global_Barpos, NPROC);
 
   { pthread_mutex_init(&(Global_CountLock), NULL); };
   { pthread_mutex_init(&(Global_io_lock), NULL); };
@@ -370,7 +346,7 @@ void init_root() {
   Global_G_root->seqnum = 0;
   Type(Global_G_root) = CELL;
   Done(Global_G_root) = FALSE;
-  pthread_cond_init(&(Global_Bartree_bar_cond), NULL);
+  pthread_cond_init(&(Done_cv(Global_G_root)), NULL);
   Level(Global_G_root) = IMAX >> 1;
   for (i = 0; i < NSUB; i++) {
     Subp(Global_G_root)[i] = NULL;
@@ -680,18 +656,7 @@ void stepsystem(long ProcessId) {
   }
 
   /* start at same time */
-  {
-    pthread_mutex_lock(&(Global_Barstart_bar_mutex));
-    Global_Barstart_bar_teller++;
-    if (Global_Barstart_bar_teller == (NPROC)) {
-      Global_Barstart_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Barstart_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Barstart_bar_cond),
-                        &(Global_Barstart_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Barstart_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Barstart)); };
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
     { (treebuildstart) = time(0); };
@@ -777,17 +742,7 @@ void stepsystem(long ProcessId) {
   /* bar needed to make sure that every process has computed its min */
   /* and max coordinates, and has accumulated them into the global   */
   /* min and max, before the new dimensions are computed	       */
-  {
-    pthread_mutex_lock(&(Global_Barpos_bar_mutex));
-    Global_Barpos_bar_teller++;
-    if (Global_Barpos_bar_teller == (NPROC)) {
-      Global_Barpos_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Barpos_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Barpos_bar_cond), &(Global_Barpos_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Barpos_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Barpos)); };
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
     { (trackend) = time(0); };
@@ -855,18 +810,7 @@ void find_my_initial_bodies(bodyptr btab, long nbody, long ProcessId) {
   for (i = 0; i < Local[ProcessId].mynbody; i++) {
     Local[ProcessId].mybodytab[i] = &(btab[offset + i]);
   }
-  {
-    pthread_mutex_lock(&(Global_Barstart_bar_mutex));
-    Global_Barstart_bar_teller++;
-    if (Global_Barstart_bar_teller == (NPROC)) {
-      Global_Barstart_bar_teller = 0;
-      pthread_cond_broadcast(&(Global_Barstart_bar_cond));
-    } else {
-      pthread_cond_wait(&(Global_Barstart_bar_cond),
-                        &(Global_Barstart_bar_mutex));
-    }
-    pthread_mutex_unlock(&(Global_Barstart_bar_mutex));
-  };
+  { pthread_barrier_wait(&(Global_Barstart)); };
 }
 
 void find_my_bodies(nodeptr mycell, long work, long direction, long ProcessId) {
