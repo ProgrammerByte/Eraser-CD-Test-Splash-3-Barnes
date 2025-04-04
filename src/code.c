@@ -743,11 +743,15 @@ void stepsystem(long ProcessId) {
     MULVS(dvel, Acc(p), dthf);
     ADDV(vel1, Vel(p), dvel);
     MULVS(dpos, vel1, dtime);
+#ifndef WITH_NO_OPTIONAL_LOCKS
     pthread_mutex_lock(
         &((CellLock->CL)[(((bodyptr)p)->parent->seqnum % MAXLOCK)]));
+#endif // WITH_NO_OPTIONAL_LOCKS
     ADDV(Pos(p), Pos(p), dpos);
+#ifndef WITH_NO_OPTIONAL_LOCKS
     pthread_mutex_unlock(
         &((CellLock->CL)[(((bodyptr)p)->parent->seqnum % MAXLOCK)]));
+#endif // WITH_NO_OPTIONAL_LOCKS
     ADDV(Vel(p), vel1, dvel);
 
     for (i = 0; i < NDIM; i++) {
