@@ -1,0 +1,48 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: C Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Static Eraser Preparation
+      run: |
+        chmod +x do_testing.py
+        chmod +x static_eraser
+        git fetch --depth=100 > /dev/null
+        ./static_eraser src $(git rev-parse HEAD) Y N
+        rm -rf eraser.db
+    
+    - name: Restore Static Eraser DB from Cache
+      uses: actions/cache@v4
+      with:
+        path: eraser.db
+        key: eraser-db-${{ github.run_id }}
+        restore-keys: eraser-db-
+
+    - name: Run Static Eraser Using Previous Compute
+      run: |
+        if [[ -f eraser.db ]]; then
+          cp eraser.db eraser_cpy.db
+          ./do_testing.py src $(git rev-parse HEAD) N Y
+        else
+          echo "Skipping: eraser.db not found."
+        fi
+  
+    - name: Run Static Eraser Dry
+      run: ./do_testing.py src $(git rev-parse HEAD) Y Y
+    
+    - name: Save Static Eraser DB to Cache
+      uses: actions/cache@v4
+      with:
+        path: eraser.db
+        key: eraser-db-${{ github.run_id }}
