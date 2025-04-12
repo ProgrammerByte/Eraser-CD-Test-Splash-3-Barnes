@@ -83,6 +83,7 @@ unsigned __threads__ = 0;
 pthread_mutex_t __intern__;
 
 #include "stdinc.h"
+#include "eraser.h"
 
 string defv[] = {
     /* DEFAULT PARAMETER VALUES              */
@@ -260,6 +261,7 @@ int main(int argc, string argv[]) {
     }
   }
 
+  EraserIgnoreOn();
   initparam(defv);
   startrun();
   initoutput();
@@ -270,6 +272,7 @@ int main(int argc, string argv[]) {
   Global_treebuildtime = 0;
   Global_forcecalctime = 0;
   Global_current_id = 0;
+  EraserIgnoreOff();
 
   { (Global_computestart) = time(0); };
 
@@ -649,7 +652,9 @@ void stepsystem(long ProcessId) {
   }
 
   if (ProcessId == 0) {
+    EraserIgnoreOn();
     init_root();
+    EraserIgnoreOff();
   } else {
     Local[ProcessId].mynumcell = 0;
     Local[ProcessId].mynumleaf = 0;
@@ -666,8 +671,10 @@ void stepsystem(long ProcessId) {
   maketree(ProcessId);
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
+    EraserIgnoreOn();
     { (treebuildend) = time(0); };
     Global_treebuildtime += treebuildend - treebuildstart;
+    EraserIgnoreOff();
   }
 
   Housekeep(ProcessId);
@@ -686,8 +693,10 @@ void stepsystem(long ProcessId) {
 
   /*     B*RRIER(Global_Barcom,NPROC); */
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
+    EraserIgnoreOn();
     { (partitionend) = time(0); };
     Global_partitiontime += partitionend - partitionstart;
+    EraserIgnoreOff();
   }
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
@@ -697,8 +706,10 @@ void stepsystem(long ProcessId) {
   ComputeForces(ProcessId);
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
+    EraserIgnoreOn();
     { (forcecalcend) = time(0); };
     Global_forcecalctime += forcecalcend - forcecalcstart;
+    EraserIgnoreOff();
   }
 
   /* advance my bodies */
@@ -745,10 +756,13 @@ void stepsystem(long ProcessId) {
   { pthread_barrier_wait(&(Global_Barpos)); };
 
   if ((ProcessId == 0) && (Local[ProcessId].nstep >= 2)) {
+    EraserIgnoreOn();
     { (trackend) = time(0); };
     Global_tracktime += trackend - trackstart;
+    EraserIgnoreOff();
   }
   if (ProcessId == 0) {
+    EraserIgnoreOn();
     Global_rsize = 0;
     SUBV(Global_max, Global_max, Global_min);
     for (i = 0; i < NDIM; i++) {
@@ -760,6 +774,7 @@ void stepsystem(long ProcessId) {
     Global_rsize = 1.00002 * Global_rsize;
     SETVS(Global_min, 1E99);
     SETVS(Global_max, -1E99);
+    EraserIgnoreOff();
   }
   Local[ProcessId].nstep++;
   Local[ProcessId].tnow = Local[ProcessId].tnow + dtime;
