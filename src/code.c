@@ -82,8 +82,8 @@ pthread_t __tid__[__MAX_THREADS__];
 unsigned __threads__ = 0;
 pthread_mutex_t __intern__;
 
-#include "stdinc.h"
 #include "eraser.h"
+#include "stdinc.h"
 
 string defv[] = {
     /* DEFAULT PARAMETER VALUES              */
